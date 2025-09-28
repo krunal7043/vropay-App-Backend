@@ -1,0 +1,22 @@
+POST -> /api/signup -> "email":"krunalvaishnav2004@gmail.com"
+
+POST -> /api/verify-otp -> "email":"krunalvaishnav2004@gmail.com","otp":75418 (generate a token)
+
+PUT -> /api/profile -> "firstName":"hello", "lastName":"test1", "gender":"male", "profession":"business owner" (Add a token in the header other wise not run)
+
+
+GET -> /api/interests -> List show in the interests page list of interests is get.
+
+POST -> /api/interests -> pass in the interests id in the aarray.  "interests":["68d586b4e5ba90d375396d0e", "68d586a8e5ba90d375396d0c"]
+
+POST -> /api/add-interest -> add new interest name in the database not for current use. it use in the admin panel.
+
+POST -> /api/preferences -> in this you have to pass in the body 
+"profession":"student", 
+"interests":["68d586a8e5ba90d375396d0c","68d5858504ea60f93048d7d5"], 
+"difficulty":"Advance", 
+"community":"Out", 
+"notifications":"Blocked"
+this all field and then do a post request. in this remember this profession is category and interests is a topic both are same. in the topic you have to call a get api /api/interests.
+
+
