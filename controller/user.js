@@ -230,7 +230,8 @@ exports.getUserProfile = async (req, res) => {
                 interests: user.interests,
                 difficulty: user.difficulty,
                 community: user.community,
-                notifications: user.notifications
+                notifications: user.notifications,
+                phoneNumber:user.phoneNumber
             }
         });
 
