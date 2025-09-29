@@ -1,7 +1,8 @@
 const { OAuth2Client } = require("google-auth-library");
 const User = require("../model/userSchema");
 const jwt = require("jsonwebtoken");
-const { sendOTP } = require("../services/emailService");
+const { sendOTP } = require('../services/smsService');
+
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -191,3 +192,83 @@ exports.verifyOTP = async (req, res) => {
 };
 
 
+exports.signUpPhoneVerification = async (req, res) => {
+    try {
+        const { phoneNumber } = req.body;
+        const userId = req.userId;
+
+        if (!phoneNumber) {
+            return res.status(400).json({ success: false, message: 'Phone number is required' });
+        }
+
+        const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+        if (!phoneRegex.test(phoneNumber)) {
+            return res.status(400).json({ success: false, message: 'Invalid phone number format' });
+        }
+
+        const otp = Math.floor(10000 + Math.random() * 90000);
+        const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+        await User.findByIdAndUpdate(userId, {
+            phoneNumber,
+            otp,
+            otpExpires
+        });
+
+        await sendOTP(phoneNumber, otp);
+
+        res.status(200).json({
+            success: true,
+            message: 'Verification code sent to phone number'
+        });
+
+    } catch (error) {
+        console.error('Phone verification request error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};
+
+exports.SignupVerifyPhoneNumber = async (req, res) => {
+    try {
+        const { otp } = req.body;
+        const userId = req.userId;
+
+        if (!otp) {
+            return res.status(400).json({ success: false, message: 'OTP is required' });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        if (!user.otp || !user.phoneNumber) {
+            return res.status(400).json({ success: false, message: 'No phone verification request found' });
+        }
+
+        if (user.otpExpires < new Date()) {
+            return res.status(400).json({ success: false, message: 'OTP has expired' });
+        }
+
+        if (user.otp !== parseInt(otp)) {
+            return res.status(400).json({ success: false, message: 'Invalid OTP' });
+        }
+
+        await User.findByIdAndUpdate(userId, {
+            phoneNumberVerified: true,
+            $unset: {
+                otp: 1,
+                otpExpires: 1
+            }
+        });
+
+        res.status(200).json({
+            success: true,
+            message: 'Phone number verified successfully'
+        });
+
+    } catch (error) {
+        console.error('Phone verification error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};

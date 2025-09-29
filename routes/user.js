@@ -31,12 +31,10 @@ router.post('/set-notifications', authenticateToken, user.setNotification);
 router.post('/request-email-update', authenticateToken, user.profileEmailUpdate);
 router.post('/verify-email-update', authenticateToken, user.verifyUpdateEmail);
 
-// signup phone verification
-router.post('/request-phone-verification', authenticateToken, user.phoneVerification);
-router.post('/verify-phone-number', authenticateToken, user.verifyPhoneNumber);
+
 
 // update phone verification
-router.post('/request-phone-update', authenticateToken, user.requestPhoneUpdate);
+router.post('/request-phone-update', authenticateToken, user.ProfilePhoneUpdate);
 router.post('/verify-phone-update', authenticateToken, user.verifyPhoneUpdate);
 
 
