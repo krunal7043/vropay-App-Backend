@@ -147,7 +147,7 @@ exports.addEntry = async (req, res) => {
 
 exports.getAllMainCategories = async (req, res) => {
     try {
-        const mainCategories = await MainCategory.find({ deletedAt: null });
+        const mainCategories = await MainCategory.find({ deletedAt: null }).select("_id name");
 
         res.status(200).json({
             success: true,
