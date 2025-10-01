@@ -43,4 +43,7 @@ router.post('/verify-phone-update', authenticateToken, user.verifyPhoneUpdate);
 //logout
 router.post('/logout', authenticateToken, user.logout);
 
+//deactivate account
+router.delete('/deactivate', authenticateToken, user.deactivateAccount);
+
 module.exports = router;

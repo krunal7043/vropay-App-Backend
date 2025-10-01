@@ -472,3 +472,115 @@ exports.logout = async (req, res) => {
         message: 'Logged out successfully'
     });
 };
+
+exports.deactivateAccount = async (req, res) => {
+    try {
+        const userId = req.userId; // Get userId from token
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: 'User not authenticated'
+            });
+        }
+
+        // Import required models
+        const Interest = require('../model/Interest');
+        const Message = require('../model/Message');
+        const MainCategory = require('../model/learnScreenSchema');
+
+        console.log(`Starting account deactivation for user: ${userId}`);
+
+        // 1. Delete user from Interest schema (remove from userid array)
+        const interestUpdateResult = await Interest.updateMany(
+            { userid: userId },
+            { $pull: { userid: userId } }
+        );
+        console.log(`Removed user from ${interestUpdateResult.modifiedCount} interests`);
+
+        // 2. Delete all messages sent by this user
+        const messageDeleteResult = await Message.deleteMany({ userId: userId });
+        console.log(`Deleted ${messageDeleteResult.deletedCount} messages`);
+
+        // 3. Delete the user from User schema
+        const userDeleteResult = await User.findByIdAndDelete(userId);
+        if (!userDeleteResult) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+        console.log(`Deleted user: ${userDeleteResult.email}`);
+
+        // 4. Clear all cookies (similar to logout)
+        const cookies = req.headers.cookie;
+        
+        if (cookies) {
+            const cookieList = cookies.split(';').map(cookie => cookie.trim());
+            
+            cookieList.forEach(cookie => {
+                const [name] = cookie.split('=');
+                if (name) {
+                    res.clearCookie(name.trim(), { 
+                        path: '/',
+                        expires: new Date(0)
+                    });
+                    
+                    res.clearCookie(name.trim(), { 
+                        path: '/api',
+                        expires: new Date(0)
+                    });
+                }
+            });
+        }
+
+        // Clear common cookies
+        const commonCookieNames = ['token', 'accessToken', 'refreshToken', 'authToken', 'jwt', 'session', 'user'];
+        
+        commonCookieNames.forEach(cookieName => {
+            res.clearCookie(cookieName, { 
+                path: '/',
+                expires: new Date(0)
+            });
+            
+            res.cookie(cookieName, '', { 
+                path: '/',
+                expires: new Date(0),
+                httpOnly: true
+            });
+        });
+
+        // Set response headers to clear cookies
+        res.setHeader('Set-Cookie', [
+            'token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly',
+            'accessToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly',
+            'refreshToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly',
+            'authToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly',
+            'jwt=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly',
+            'session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly',
+            'user=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly'
+        ]);
+
+        res.status(200).json({
+            success: true,
+            message: 'Account deactivated successfully. All user data has been deleted.',
+            data: {
+                userId: userId,
+                userEmail: userDeleteResult.email,
+                deletedData: {
+                    messagesDeleted: messageDeleteResult.deletedCount,
+                    interestsRemovedFrom: interestUpdateResult.modifiedCount,
+                    userDeleted: true
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Account deactivation error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Account deactivation failed',
+            error: error.message
+        });
+    }
+};
