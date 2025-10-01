@@ -55,4 +55,11 @@ router.get(
   learnScreen.getEntries
 );
 
+// Search entries by title within a specific topic
+router.get(
+  "/main-category/:mainCategoryId/sub-category/:subCategoryId/topic/:topicId/search",
+  authenticateToken,
+  learnScreen.searchEntriesInTopic
+);
+
 module.exports = router;

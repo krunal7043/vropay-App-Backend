@@ -63,6 +63,18 @@ exports.updatePreferences = async (req, res) => {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
+        // If interests are updated, add userId to each interest's userId array
+        if (interests && Array.isArray(interests)) {
+            const Interest = require('../model/Interest');
+            for (const interestId of interests) {
+                await Interest.findByIdAndUpdate(
+                    interestId,
+                    { $addToSet: { userId: userId } }, // $addToSet prevents duplicates
+                    { new: true }
+                );
+            }
+        }
+
         res.status(200).json({
             success: true,
             message: 'Preferences updated successfully',

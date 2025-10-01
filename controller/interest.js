@@ -26,6 +26,7 @@ exports.updateUserInterests = async (req, res) => {
         .json({ success: false, message: "Interests array is required" });
     }
 
+    // Update user's interests
     const user = await User.findByIdAndUpdate(
       userId,
       { interests },
@@ -38,9 +39,18 @@ exports.updateUserInterests = async (req, res) => {
         .json({ success: false, message: "User not found" });
     }
 
+    // Add userId to each interest's userid array
+    for (const interestId of interests) {
+      await Interest.findByIdAndUpdate(
+        interestId,
+        { $addToSet: { userId: userId } }, // $addToSet prevents duplicates
+        { new: true }
+      );
+    }
+
     res.status(200).json({
       success: true,
-      message: "Interests add successfully",
+      message: "Interests added successfully",
       interests: user.interests,
     });
   } catch (error) {

@@ -254,3 +254,108 @@ exports.getEntries = async (req, res) => {
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 };
+
+exports.searchEntriesInTopic = async (req, res) => {
+    try {
+        const { mainCategoryId, subCategoryId, topicId } = req.params;
+        const { query, page = 1, limit = 10 } = req.query;
+
+        if (!query || query.trim() === '') {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Search query is required' 
+            });
+        }
+
+        // Find the specific topic
+        const mainCategory = await MainCategory.findById(mainCategoryId);
+        if (!mainCategory) {
+            return res.status(404).json({ success: false, message: 'Main category not found' });
+        }
+
+        const subCategory = mainCategory.subCategorys.id(subCategoryId);
+        if (!subCategory) {
+            return res.status(404).json({ success: false, message: 'Sub category not found' });
+        }
+
+        const topic = subCategory.topics.id(topicId);
+        if (!topic) {
+            return res.status(404).json({ success: false, message: 'Topic not found' });
+        }
+
+        // Helper function to highlight search text
+        const highlightSearchText = (text, searchQuery) => {
+            if (!searchQuery || !text) return text;
+            
+            const regex = new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            return text.replace(regex, '<mark>$1</mark>');
+        };
+
+        // Search for entries with title matching the query within this specific topic
+        const searchResults = [];
+        
+        topic.entries.forEach(entry => {
+            if (entry.deletedAt === null && 
+                entry.title.toLowerCase().includes(query.toLowerCase())) {
+                
+                searchResults.push({
+                    _id: entry._id,
+                    title: entry.title,
+                    highlightedTitle: highlightSearchText(entry.title, query),
+                    image: entry.image,
+                    body: entry.body,
+                    footer: entry.footer,
+                    createdAt: entry.createdAt,
+                    updatedAt: entry.updatedAt
+                });
+            }
+        });
+
+        // Sort by relevance (exact matches first, then partial matches)
+        searchResults.sort((a, b) => {
+            const aTitle = a.title.toLowerCase();
+            const bTitle = b.title.toLowerCase();
+            const searchQuery = query.toLowerCase();
+            
+            // Exact match gets highest priority
+            if (aTitle === searchQuery && bTitle !== searchQuery) return -1;
+            if (bTitle === searchQuery && aTitle !== searchQuery) return 1;
+            
+            // Starts with query gets second priority
+            if (aTitle.startsWith(searchQuery) && !bTitle.startsWith(searchQuery)) return -1;
+            if (bTitle.startsWith(searchQuery) && !aTitle.startsWith(searchQuery)) return 1;
+            
+            // Alphabetical order for other matches
+            return aTitle.localeCompare(bTitle);
+        });
+
+        // Apply pagination
+        const totalResults = searchResults.length;
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + parseInt(limit);
+        const paginatedResults = searchResults.slice(startIndex, endIndex);
+
+        res.status(200).json({
+            success: true,
+            data: {
+                results: paginatedResults,
+                pagination: {
+                    currentPage: parseInt(page),
+                    totalPages: Math.ceil(totalResults / limit),
+                    totalResults,
+                    hasNext: endIndex < totalResults,
+                    hasPrev: page > 1
+                },
+                searchQuery: query,
+                topic: {
+                    _id: topic._id,
+                    name: topic.name
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Search entries in topic error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};

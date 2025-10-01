@@ -15,5 +15,6 @@ app.use('/api', require('./routes/signup'));
 app.use('/api', require('./routes/interest'));
 app.use('/api', require('./routes/learnScreen'));
 app.use('/api', require('./routes/signin'));
+app.use('/api', require('./routes/message'));
 
 module.exports = app;

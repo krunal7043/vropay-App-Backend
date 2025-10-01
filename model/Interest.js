@@ -6,6 +6,11 @@ const interestSchema = new mongoose.Schema({
         required: true,
         unique: true
     },
+    userId: [{
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: 'User'
+    }],
     deletedAt: {
         type: Date,
         default: null
