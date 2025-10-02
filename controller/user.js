@@ -491,12 +491,20 @@ exports.deactivateAccount = async (req, res) => {
 
         console.log(`Starting account deactivation for user: ${userId}`);
 
-        // 1. Delete user from Interest schema (remove from userid array)
+        // First, check how many interests the user is in
+        const interestsWithUser = await Interest.find({ userId: userId });
+        console.log(`User is currently in ${interestsWithUser.length} interests`);
+
+        // 1. Delete user from Interest schema (remove from userId array)
         const interestUpdateResult = await Interest.updateMany(
-            { userid: userId },
-            { $pull: { userid: userId } }
+            { userId: userId },
+            { $pull: { userId: userId } }
         );
         console.log(`Removed user from ${interestUpdateResult.modifiedCount} interests`);
+        
+        // Verify the removal worked
+        const interestsAfterRemoval = await Interest.find({ userId: userId });
+        console.log(`User is now in ${interestsAfterRemoval.length} interests (should be 0)`);
 
         // 2. Delete all messages sent by this user
         const messageDeleteResult = await Message.deleteMany({ userId: userId });

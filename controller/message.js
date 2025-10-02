@@ -165,7 +165,52 @@ const getInterestMessages = async (req, res) => {
     }
 };
 
+// GET /api/messages/interest/:interestId/user-count - Get user count for an interest
+const getInterestUserCount = async (req, res) => {
+    try {
+        const { interestId } = req.params;
+
+        if (!interestId) {
+            return res.status(400).json({
+                success: false,
+                message: "Interest ID is required"
+            });
+        }
+
+        // Find the interest and get user count
+        const interest = await Interest.findById(interestId);
+        
+        if (!interest) {
+            return res.status(404).json({
+                success: false,
+                message: "Interest not found"
+            });
+        }
+
+        // Get the count of users in this interest (using correct field name 'userId')
+        const userCount = interest.userId ? interest.userId.length : 0;
+
+        res.status(200).json({
+            success: true,
+            data: {
+                interestId: interest._id,
+                interestName: interest.name,
+                userCount: userCount,
+                users: interest.userId || []
+            }
+        });
+
+    } catch (error) {
+        console.error("Get interest user count error:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: "Internal server error" 
+        });
+    }
+};
+
 module.exports = {
     sendMessage,
-    getInterestMessages
+    getInterestMessages,
+    getInterestUserCount
 };
