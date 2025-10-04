@@ -6,7 +6,7 @@ const { sendPhoneUpdateOTP } = require('../services/smsService');
 exports.addProfileDetails = async (req, res) => {
     try {
         const { firstName, lastName, gender, profession } = req.body;
-        const userId = req.userId;
+        const userId = req.user?._id;
 
         if (!firstName || !lastName || !gender || !profession) {
             return res.status(400).json({ success: false, message: 'All fields are required' });
@@ -44,7 +44,7 @@ exports.addProfileDetails = async (req, res) => {
 exports.updatePreferences = async (req, res) => {
     try {
         const { profession, interests, difficulty, community, notifications } = req.body;
-        const userId = req.userId;
+        const userId = req.user?._id;
 
         const updateData = {};
         if (profession) updateData.profession = profession;
@@ -97,7 +97,7 @@ exports.updatePreferences = async (req, res) => {
 exports.setDifficulty = async (req, res) => {
     try {
         const { difficulty } = req.body;
-        const userId = req.userId;
+        const userId = req.user?._id;
 
         if (!difficulty) {
             return res.status(400).json({ success: false, message: 'Difficulty level is required' });
@@ -139,7 +139,7 @@ exports.setDifficulty = async (req, res) => {
 exports.setCommunity = async (req, res) => {
     try {
         const { community } = req.body;
-        const userId = req.userId;
+        const userId = req.user?._id;
 
         if (!community) {
             return res.status(400).json({ success: false, message: 'Community preference is required' });
@@ -179,7 +179,7 @@ exports.setCommunity = async (req, res) => {
 exports.setNotification = async (req, res) => {
     try {
         const { notifications } = req.body;
-        const userId = req.userId;
+        const userId = req.user?._id;
 
         if (!notifications) {
             return res.status(400).json({ success: false, message: 'Notification preference is required' });
@@ -218,7 +218,7 @@ exports.setNotification = async (req, res) => {
 
 exports.getUserProfile = async (req, res) => {
     try {
-        const userId = req.userId;
+        const userId = req.user?._id;
 
         const user = await User.findById(userId).populate('interests');
         
@@ -256,7 +256,7 @@ exports.getUserProfile = async (req, res) => {
 exports.updateGeneralDetails = async (req, res) => {
     try {
         const { firstName, lastName, gender } = req.body;
-        const userId = req.userId;
+        const userId = req.user?._id;
         
         const updateData = {};
         if (firstName) updateData.firstName = firstName;
@@ -295,7 +295,7 @@ exports.updateGeneralDetails = async (req, res) => {
 exports.profileEmailUpdate = async (req, res) => {
     try {
         const { newEmail } = req.body;
-        const userId = req.userId;
+        const userId = req.user?._id;
 
         if (!newEmail) {
             return res.status(400).json({ success: false, message: 'New email is required' });
@@ -336,7 +336,7 @@ exports.profileEmailUpdate = async (req, res) => {
 exports.verifyUpdateEmail = async (req, res) => {
     try {
         const { otp } = req.body;
-        const userId = req.userId;
+        const userId = req.user?._id;
 
         if (!otp) {
             return res.status(400).json({ success: false, message: 'OTP is required' });
@@ -384,7 +384,7 @@ exports.verifyUpdateEmail = async (req, res) => {
 exports.ProfilePhoneUpdate = async (req, res) => {
     try {
         const { newPhoneNumber } = req.body;
-        const userId = req.userId;
+        const userId = req.user?._id;
 
         if (!newPhoneNumber) {
             return res.status(400).json({ success: false, message: 'New phone number is required' });
@@ -420,7 +420,7 @@ exports.ProfilePhoneUpdate = async (req, res) => {
 exports.verifyPhoneUpdate = async (req, res) => {
     try {
         const { otp } = req.body;
-        const userId = req.userId;
+        const userId = req.user?._id;
 
         if (!otp) {
             return res.status(400).json({ success: false, message: 'OTP is required' });
@@ -475,7 +475,7 @@ exports.logout = async (req, res) => {
 
 exports.deactivateAccount = async (req, res) => {
     try {
-        const userId = req.userId; // Get userId from token
+        const userId = req.user?._id; // Get userId from token
 
         if (!userId) {
             return res.status(401).json({

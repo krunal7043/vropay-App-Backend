@@ -18,7 +18,7 @@ exports.getAllInterests = async (req, res) => {
 exports.updateUserInterests = async (req, res) => {
   try {
     const { interests } = req.body;
-    const userId = req.userId;
+    const userId = req.user?._id;
 
     if (!interests || !Array.isArray(interests)) {
       return res

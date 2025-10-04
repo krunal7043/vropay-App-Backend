@@ -6,7 +6,9 @@ const User = require('../model/userSchema');
 const sendMessage = async (req, res) => {
     try {
         const { interestId, message } = req.body;
-        const userId = req.userId; // Get userId from token
+        const userId = req.user?._id;// Get userId from token
+
+        // console.log(userId);
 
         // Validate required fields
         if (!interestId || !message) {
@@ -52,11 +54,12 @@ const sendMessage = async (req, res) => {
             });
         }
 
-        // Create and save the message
+        // Create and save the message with isImportant explicitly set to false
         const newMessage = new Message({
             interestId,
             userId,
-            message
+            message,
+            isImportant: false  // Explicitly set to false for normal messages
         });
 
         const savedMessage = await newMessage.save();
@@ -166,6 +169,104 @@ const getInterestMessages = async (req, res) => {
 };
 
 // GET /api/messages/interest/:interestId/user-count - Get user count for an interest
+// POST /api/messages/important - Send an important message to an interest group
+const sendImportantMessage = async (req, res) => {
+    try {
+        const { interestId, message } = req.body;
+        const userId = req.user?._id; // Get userId from token
+
+        // Validate required fields
+        if (!interestId || !message) {
+            return res.status(400).json({
+                success: false,
+                message: 'interestId and message are required'
+            });
+        }
+
+        // Validate userId from token
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: 'User not authenticated'
+            });
+        }
+
+        // Check if the interest exists
+        const interest = await Interest.findById(interestId);
+        if (!interest) {
+            return res.status(404).json({
+                success: false,
+                message: 'Interest not found'
+            });
+        }
+
+        // Check if the user exists
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        // Check if the user is a member of the interest
+        const isMember = interest.userId.some(id => id.toString() === userId);
+        if (!isMember) {
+            return res.status(403).json({
+                success: false,
+                message: 'User is not a member of this interest'
+            });
+        }
+
+        // Create and save the important message
+        const newMessage = new Message({
+            interestId,
+            userId,
+            message,
+            isImportant: true  // Always set to true for important messages
+        });
+
+        const savedMessage = await newMessage.save();
+
+        // Populate the message with user details for response
+        const populatedMessage = await Message.findById(savedMessage._id)
+            .populate('userId', 'firstName lastName')
+            .populate('interestId', 'name');
+
+        const responseMessage = {
+            ...populatedMessage.toObject(),
+            userId: {
+                _id: populatedMessage.userId._id,
+                firstName: populatedMessage.userId.firstName,
+                lastName: populatedMessage.userId.lastName
+            }
+        };
+
+        // Emit the important message to all clients in the interest group via Socket.IO
+        const io = req.app.get('io');
+        if (io) {
+            io.to(interestId).emit('newImportantMessage', {
+                success: true,
+                message: responseMessage
+            });
+        }
+
+        res.status(201).json({
+            success: true,
+            message: 'Important message sent successfully',
+            data: responseMessage
+        });
+
+    } catch (error) {
+        console.error('Error sending important message:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+
 const getInterestUserCount = async (req, res) => {
     try {
         const { interestId } = req.params;
@@ -211,6 +312,7 @@ const getInterestUserCount = async (req, res) => {
 
 module.exports = {
     sendMessage,
+    sendImportantMessage,
     getInterestMessages,
     getInterestUserCount
 };

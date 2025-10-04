@@ -195,7 +195,7 @@ exports.verifyOTP = async (req, res) => {
 exports.signUpPhoneVerification = async (req, res) => {
   try {
     const { phoneNumber } = req.body;
-    const userId = req.userId;
+    const userId = req.user?._id;
 
     if (!phoneNumber) {
       return res
@@ -234,7 +234,7 @@ exports.signUpPhoneVerification = async (req, res) => {
 exports.SignupVerifyPhoneNumber = async (req, res) => {
   try {
     const { otp } = req.body;
-    const userId = req.userId;
+    const userId = req.user?._id;
 
     if (!otp) {
       return res
