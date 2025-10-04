@@ -62,4 +62,11 @@ router.get(
   learnScreen.searchEntriesInTopic
 );
 
+// Mark entry as read
+router.post(
+  "/main-category/:mainCategoryId/sub-category/:subCategoryId/topic/:topicId/entry/:entryId/mark-read",
+  authenticateToken,
+  learnScreen.markEntryAsRead
+);
+
 module.exports = router;

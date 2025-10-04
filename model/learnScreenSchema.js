@@ -17,6 +17,17 @@ const entrySchema = new mongoose.Schema(
     footer: {
       type: String,
     },
+    readBy: [{
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+      },
+      readAt: {
+        type: Date,
+        default: Date.now
+      }
+    }],
     deletedAt: {
       type: Date,
       default: null,

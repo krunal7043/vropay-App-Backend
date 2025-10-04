@@ -228,8 +228,9 @@ exports.getTopics = async (req, res) => {
 exports.getEntries = async (req, res) => {
     try {
         const { mainCategoryId, subCategoryId, topicId } = req.params;
-        const mainCategory = await MainCategory.findById(mainCategoryId);
+        const userId = req.user?._id; // Get user ID from auth middleware if available
 
+        const mainCategory = await MainCategory.findById(mainCategoryId);
         if (!mainCategory) {
             return res.status(404).json({ success: false, message: 'Main category not found' });
         }
@@ -244,13 +245,80 @@ exports.getEntries = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Topic not found' });
         }
 
+        // Transform entries to include user-specific read status
+        const entriesWithReadStatus = topic.entries.map(entry => {
+            const entryObj = entry.toObject();
+            // Check if this user has read this entry
+            const readStatus = entry.readBy.find(read => read.userId.toString() === userId.toString());
+            
+            // Add read status to entry object
+            entryObj.isRead = !!readStatus;
+            entryObj.readAt = readStatus ? readStatus.readAt : null;
+            
+            // Remove readBy array from response to keep it clean
+            delete entryObj.readBy;
+            
+            return entryObj;
+        });
+
         res.status(200).json({
             success: true,
-            data: topic.entries
+            data: entriesWithReadStatus
         });
 
     } catch (error) {
         console.error('Get entries error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};
+
+// Mark entry as read
+exports.markEntryAsRead = async (req, res) => {
+    try {
+        const { mainCategoryId, subCategoryId, topicId, entryId } = req.params;
+        
+        // Check if user is authenticated
+        if (!req.user || !req.user._id) {
+            return res.status(401).json({ success: false, message: 'Authentication required' });
+        }
+        const userId = req.user._id;
+
+        const mainCategory = await MainCategory.findById(mainCategoryId);
+        if (!mainCategory) {
+            return res.status(404).json({ success: false, message: 'Main category not found' });
+        }
+
+        const subCategory = mainCategory.subCategorys.id(subCategoryId);
+        if (!subCategory) {
+            return res.status(404).json({ success: false, message: 'Sub category not found' });
+        }
+
+        const topic = subCategory.topics.id(topicId);
+        if (!topic) {
+            return res.status(404).json({ success: false, message: 'Topic not found' });
+        }
+
+        const entry = topic.entries.id(entryId);
+        if (!entry) {
+            return res.status(404).json({ success: false, message: 'Entry not found' });
+        }
+
+        // Check if user has already read this entry
+        const alreadyRead = entry.readBy.some(read => read.userId.toString() === userId.toString());
+        
+        if (!alreadyRead) {
+            // Add user to readBy array
+            entry.readBy.push({ userId });
+            await mainCategory.save();
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Entry marked as read'
+        });
+
+    } catch (error) {
+        console.error('Mark entry as read error:', error);
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 };
