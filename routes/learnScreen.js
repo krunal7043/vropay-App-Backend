@@ -62,6 +62,13 @@ router.get(
   learnScreen.searchEntriesInTopic
 );
 
+// Cross-category search - search across different main categories
+router.get(
+  "/search/cross-category",
+  authenticateToken,
+  learnScreen.crossCategorySearch
+);
+
 // Mark entry as read
 router.post(
   "/main-category/:mainCategoryId/sub-category/:subCategoryId/topic/:topicId/entry/:entryId/mark-read",

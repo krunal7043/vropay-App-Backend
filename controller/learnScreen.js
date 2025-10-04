@@ -323,6 +323,161 @@ exports.markEntryAsRead = async (req, res) => {
     }
 };
 
+// Cross-category search - search across different main categories
+exports.crossCategorySearch = async (req, res) => {
+    try {
+        const { query, page = 1, limit = 10, targetMainCategoryId } = req.query;
+
+        if (!query || query.trim() === '') {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Search query is required' 
+            });
+        }
+
+        // Helper function to highlight search text
+        const highlightSearchText = (text, searchQuery) => {
+            if (!searchQuery || !text) return text;
+            
+            const regex = new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            return text.replace(regex, '<mark>$1</mark>');
+        };
+
+        let searchResults = [];
+
+        if (targetMainCategoryId) {
+            // Search in specific main category
+            const targetMainCategory = await MainCategory.findById(targetMainCategoryId);
+            if (!targetMainCategory) {
+                return res.status(404).json({ 
+                    success: false, 
+                    message: 'Target main category not found' 
+                });
+            }
+
+            // Search through all subcategories, topics, and entries in the target main category
+            targetMainCategory.subCategorys.forEach(subCategory => {
+                subCategory.topics.forEach(topic => {
+                    topic.entries.forEach(entry => {
+                        if (entry.deletedAt === null && 
+                            (entry.title.toLowerCase().includes(query.toLowerCase()) ||
+                             entry.body.toLowerCase().includes(query.toLowerCase()))) {
+                            
+                            searchResults.push({
+                                _id: entry._id,
+                                title: entry.title,
+                                highlightedTitle: highlightSearchText(entry.title, query),
+                                body: entry.body,
+                                highlightedBody: highlightSearchText(entry.body, query),
+                                image: entry.image,
+                                footer: entry.footer,
+                                createdAt: entry.createdAt,
+                                updatedAt: entry.updatedAt,
+                                mainCategory: {
+                                    _id: targetMainCategory._id,
+                                    name: targetMainCategory.name
+                                },
+                                subCategory: {
+                                    _id: subCategory._id,
+                                    name: subCategory.name
+                                },
+                                topic: {
+                                    _id: topic._id,
+                                    name: topic.name
+                                }
+                            });
+                        }
+                    });
+                });
+            });
+        } else {
+            // Search across all main categories
+            const allMainCategories = await MainCategory.find({});
+            
+            allMainCategories.forEach(mainCategory => {
+                mainCategory.subCategorys.forEach(subCategory => {
+                    subCategory.topics.forEach(topic => {
+                        topic.entries.forEach(entry => {
+                            if (entry.deletedAt === null && 
+                                (entry.title.toLowerCase().includes(query.toLowerCase()) ||
+                                 entry.body.toLowerCase().includes(query.toLowerCase()))) {
+                                
+                                searchResults.push({
+                                    _id: entry._id,
+                                    title: entry.title,
+                                    highlightedTitle: highlightSearchText(entry.title, query),
+                                    body: entry.body,
+                                    highlightedBody: highlightSearchText(entry.body, query),
+                                    image: entry.image,
+                                    footer: entry.footer,
+                                    createdAt: entry.createdAt,
+                                    updatedAt: entry.updatedAt,
+                                    mainCategory: {
+                                        _id: mainCategory._id,
+                                        name: mainCategory.name
+                                    },
+                                    subCategory: {
+                                        _id: subCategory._id,
+                                        name: subCategory.name
+                                    },
+                                    topic: {
+                                        _id: topic._id,
+                                        name: topic.name
+                                    }
+                                });
+                            }
+                        });
+                    });
+                });
+            });
+        }
+
+        // Sort by relevance (exact matches first, then partial matches)
+        searchResults.sort((a, b) => {
+            const aTitle = a.title.toLowerCase();
+            const bTitle = b.title.toLowerCase();
+            const searchQuery = query.toLowerCase();
+            
+            // Exact match gets highest priority
+            if (aTitle === searchQuery && bTitle !== searchQuery) return -1;
+            if (bTitle === searchQuery && aTitle !== searchQuery) return 1;
+            
+            // Starts with query gets second priority
+            if (aTitle.startsWith(searchQuery) && !bTitle.startsWith(searchQuery)) return -1;
+            if (bTitle.startsWith(searchQuery) && !aTitle.startsWith(searchQuery)) return 1;
+            
+            // Alphabetical order for other matches
+            return aTitle.localeCompare(bTitle);
+        });
+
+        // Apply pagination
+        const totalResults = searchResults.length;
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + parseInt(limit);
+        const paginatedResults = searchResults.slice(startIndex, endIndex);
+
+        res.status(200).json({
+            success: true,
+            data: {
+                results: paginatedResults,
+                pagination: {
+                    currentPage: parseInt(page),
+                    totalPages: Math.ceil(totalResults / limit),
+                    totalResults,
+                    hasNext: endIndex < totalResults,
+                    hasPrev: page > 1
+                },
+                searchQuery: query,
+                targetMainCategory: targetMainCategoryId ? { _id: targetMainCategoryId } : null
+            }
+        });
+
+    } catch (error) {
+        console.error('Cross category search error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};
+
 exports.searchEntriesInTopic = async (req, res) => {
     try {
         const { mainCategoryId, subCategoryId, topicId } = req.params;
